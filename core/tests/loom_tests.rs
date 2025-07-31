@@ -1,15 +1,14 @@
 #![cfg(loom)]
 
-use loom::sync::Arc;
 use loom::thread;
 use ::core::ring_buffer::RingBuffer;
 
 #[test]
 fn loom_spsc_basic() {
-    let mut config = loom::model::Config::default();
+    let mut config = loom::model::Builder::new();
     config.preemption_bound = Some(3);
     
-    loom::model_with_config(config, || {
+    config.check(|| {
         let buffer = RingBuffer::<u32>::new(4).unwrap();
         let (mut producer, mut consumer) = buffer.split();
         
@@ -46,10 +45,10 @@ fn loom_spsc_basic() {
 
 #[test]
 fn loom_spsc_full_buffer() {
-    let mut config = loom::model::Config::default();
+    let mut config = loom::model::Builder::new();
     config.preemption_bound = Some(3);
     
-    loom::model_with_config(config, || {
+    config.check(|| {
         let buffer = RingBuffer::<u32>::new(2).unwrap();
         let (mut producer, mut consumer) = buffer.split();
         
@@ -88,10 +87,10 @@ fn loom_spsc_full_buffer() {
 
 #[test]
 fn loom_memory_ordering() {
-    let mut config = loom::model::Config::default();
+    let mut config = loom::model::Builder::new();
     config.preemption_bound = Some(4);
     
-    loom::model_with_config(config, || {
+    config.check(|| {
         let buffer = RingBuffer::<Box<u32>>::new(4).unwrap();
         let (mut producer, mut consumer) = buffer.split();
         
@@ -130,10 +129,10 @@ fn loom_memory_ordering() {
 
 #[test]
 fn loom_wrap_around() {
-    let mut config = loom::model::Config::default();
+    let mut config = loom::model::Builder::new();
     config.preemption_bound = Some(3);
     
-    loom::model_with_config(config, || {
+    config.check(|| {
         let buffer = RingBuffer::<u32>::new(2).unwrap();
         let (mut producer, mut consumer) = buffer.split();
         
