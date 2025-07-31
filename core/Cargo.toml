@@ -4,4 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ringbuf = "0.4"
+
+[dev-dependencies]
+loom = { version = "0.7", features = ["checkpoint"] }
+criterion = "0.5"
+proptest = "1.5"
+
+[[bench]]
+name = "ring_buffer"
+harness = false
