@@ -1,5 +1,5 @@
 use proptest::prelude::*;
-use core::ring_buffer::{RingBuffer, RingBufferError};
+use ::core::ring_buffer::{RingBuffer, RingBufferError};
 use std::thread;
 use std::sync::mpsc;
 

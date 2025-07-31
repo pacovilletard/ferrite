@@ -377,7 +377,7 @@ mod tests {
         let buffer = RingBuffer::<u32>::new(16).unwrap();
         assert_eq!(buffer.capacity(), 16);
         
-        let (mut producer, mut consumer) = buffer.split();
+        let (mut producer, consumer) = buffer.split();
         assert_eq!(consumer.len(), 0);
         assert_eq!(producer.remaining_capacity(), 15); // capacity - 1
 

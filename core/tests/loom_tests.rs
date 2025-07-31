@@ -2,7 +2,7 @@
 
 use loom::sync::Arc;
 use loom::thread;
-use core::ring_buffer::RingBuffer;
+use ::core::ring_buffer::RingBuffer;
 
 #[test]
 fn loom_spsc_basic() {

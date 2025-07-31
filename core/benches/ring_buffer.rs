@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use core::ring_buffer::RingBuffer;
+use ::core::ring_buffer::RingBuffer;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Instant, Duration};
 
 fn bench_spsc_throughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("spsc_throughput");

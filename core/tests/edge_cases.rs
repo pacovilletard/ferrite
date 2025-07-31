@@ -1,4 +1,4 @@
-use core::ring_buffer::{RingBuffer, RingBufferError};
+use ::core::ring_buffer::{RingBuffer, RingBufferError};
 use std::thread;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -79,7 +79,6 @@ fn test_zero_sized_type() {
 #[test]
 fn test_drop_semantics() {
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
     
     static DROP_COUNT: AtomicUsize = AtomicUsize::new(0);
     
@@ -149,6 +148,7 @@ fn test_concurrent_termination() {
     
     let done = Arc::new(AtomicBool::new(false));
     let done_prod = done.clone();
+    let done_cons = done.clone();
     
     let producer_handle = thread::spawn(move || {
         let mut count = 0;
@@ -166,7 +166,7 @@ fn test_concurrent_termination() {
         let mut count = 0;
         let mut last_value = None;
         
-        while !done.load(Ordering::Relaxed) || !consumer.is_empty() {
+        while !done_cons.load(Ordering::Relaxed) || !consumer.is_empty() {
             match consumer.pop() {
                 Ok(val) => {
                     if let Some(last) = last_value {
@@ -176,7 +176,7 @@ fn test_concurrent_termination() {
                     count += 1;
                 }
                 Err(_) => {
-                    if done.load(Ordering::Relaxed) {
+                    if done_cons.load(Ordering::Relaxed) {
                         break;
                     }
                     thread::yield_now();
@@ -205,7 +205,7 @@ fn test_memory_barriers() {
     // This test verifies that memory barriers work correctly
     // by passing complex data through the buffer
     
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     struct ComplexData {
         id: u64,
         data: Vec<u8>,
@@ -223,7 +223,7 @@ fn test_memory_barriers() {
                 flag: i % 2 == 0,
             };
             
-            while producer.push(data).is_err() {
+            while producer.push(data.clone()).is_err() {
                 thread::yield_now();
             }
         }

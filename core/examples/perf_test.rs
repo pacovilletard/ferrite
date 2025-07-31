@@ -1,6 +1,6 @@
-use core::ring_buffer::RingBuffer;
+use ::core::ring_buffer::RingBuffer;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn main() {
     println!("Ring Buffer Performance Test");
