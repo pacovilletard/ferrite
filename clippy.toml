@@ -1,0 +1,2 @@
+# See https://doc.rust-lang.org/clippy/usage.html#configuration for configuration options
+#![allow(clippy::all)]
