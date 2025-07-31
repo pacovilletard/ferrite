@@ -1,0 +1,3 @@
+# See https://rust-lang.github.io/rustfmt/ for configuration options
+version = "Two"
+edition = "2021"
