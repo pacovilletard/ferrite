@@ -96,8 +96,11 @@ fn loom_memory_ordering() {
         
         let producer_handle = thread::spawn(move || {
             for i in 0..3 {
-                let boxed = Box::new(i * 100);
-                while producer.push(boxed).is_err() {
+                loop {
+                    let boxed = Box::new(i * 100);
+                    if producer.push(boxed).is_ok() {
+                        break;
+                    }
                     thread::yield_now();
                 }
             }

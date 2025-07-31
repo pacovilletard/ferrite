@@ -13,3 +13,6 @@ proptest = "1.5"
 [[bench]]
 name = "ring_buffer"
 harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(loom)'] }
