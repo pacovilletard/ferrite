@@ -89,10 +89,10 @@ fn bench_latency(c: &mut Criterion) {
 
 fn bench_ops_per_second(c: &mut Criterion) {
     c.bench_function("ops_per_second_target_20M", |b| {
-        let buffer = RingBuffer::<u64>::new(1024).unwrap();
-        let (mut producer, mut consumer) = buffer.split();
-        
         b.iter_custom(|iters| {
+            let buffer = RingBuffer::<u64>::new(1024).unwrap();
+            let (mut producer, mut consumer) = buffer.split();
+            
             let start = Instant::now();
             
             let producer_handle = thread::spawn(move || {
@@ -101,7 +101,6 @@ fn bench_ops_per_second(c: &mut Criterion) {
                         std::hint::spin_loop();
                     }
                 }
-                producer
             });
             
             let consumer_handle = thread::spawn(move || {
@@ -113,11 +112,10 @@ fn bench_ops_per_second(c: &mut Criterion) {
                         std::hint::spin_loop();
                     }
                 }
-                consumer
             });
             
-            producer = producer_handle.join().unwrap();
-            consumer = consumer_handle.join().unwrap();
+            producer_handle.join().unwrap();
+            consumer_handle.join().unwrap();
             
             let elapsed = start.elapsed();
             
