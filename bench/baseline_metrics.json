@@ -1,0 +1,39 @@
+{
+  "ring_buffer_baseline": {
+    "throughput": {
+      "1024": {
+        "ops_per_second": 0,
+        "p99_ns": 0,
+        "description": "1K element buffer throughput"
+      },
+      "4096": {
+        "ops_per_second": 0,
+        "p99_ns": 0,
+        "description": "4K element buffer throughput"
+      },
+      "16384": {
+        "ops_per_second": 0,
+        "p99_ns": 0,
+        "description": "16K element buffer throughput"
+      },
+      "65536": {
+        "ops_per_second": 0,
+        "p99_ns": 0,
+        "description": "64K element buffer throughput"
+      }
+    },
+    "latency": {
+      "push_empty_p99_ns": 0,
+      "pop_single_p99_ns": 0,
+      "description": "P99 latencies for basic operations"
+    },
+    "hardware_counters": {
+      "target_ipc": 2.0,
+      "max_cache_miss_rate": 5.0,
+      "max_branch_miss_rate": 1.0,
+      "description": "Target hardware performance metrics"
+    }
+  },
+  "updated": "",
+  "note": "Baseline metrics will be populated after first benchmark run"
+}
