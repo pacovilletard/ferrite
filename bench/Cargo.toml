@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+criterion = "0.5.1"
+core = { path = "../core" }
+
+[dev-dependencies]
+
+[[bench]]
+name = "ring_buffer_benches"
+harness = false
