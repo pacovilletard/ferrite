@@ -71,16 +71,16 @@ jobs:
         
         # Generate flamegraphs for each benchmark group
         echo "Generating flamegraph for throughput benchmark..."
-        sudo cargo flamegraph --bench ring_buffer_benches -o flamegraph-throughput.svg -- --bench throughput_benchmark --profile-time 10
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-throughput.svg -- --bench throughput_benchmark --profile-time 10
         
         echo "Generating flamegraph for latency benchmark..."
-        sudo cargo flamegraph --bench ring_buffer_benches -o flamegraph-latency.svg -- --bench latency_benchmark --profile-time 10
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-latency.svg -- --bench latency_benchmark --profile-time 10
         
         echo "Generating flamegraph for boundary benchmark..."
-        sudo cargo flamegraph --bench ring_buffer_benches -o flamegraph-boundary.svg -- --bench boundary_benchmark --profile-time 10
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-boundary.svg -- --bench boundary_benchmark --profile-time 10
         
         echo "Generating flamegraph for contention benchmark..."
-        sudo cargo flamegraph --bench ring_buffer_benches -o flamegraph-contention.svg -- --bench contention_benchmark --profile-time 10
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-contention.svg -- --bench contention_benchmark --profile-time 10
     
     - name: Collect hardware performance counters
       run: |
@@ -96,7 +96,7 @@ jobs:
           mkdir -p "$OUTPUT_DIR"
           EVENTS="cpu-cycles,instructions,cache-references,cache-misses,branch-instructions,branch-misses"
           
-          sudo perf stat -e "$EVENTS" -o "$OUTPUT_DIR/benchmark-perf.txt" \
+          sudo -E env "PATH=$PATH" perf stat -e "$EVENTS" -o "$OUTPUT_DIR/benchmark-perf.txt" \
             cargo bench --bench ring_buffer_benches || true
             
           echo "=== Performance Counters ==="
