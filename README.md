@@ -1,6 +1,6 @@
-# Project Title
+# Ferrite
 
-A brief description of the project.
+Welcome to the Ferrite project repository.
 
 ## Workspace Members
 
