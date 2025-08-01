@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/benchmark-harness" ]
   pull_request:
     branches: [ "main" ]
 
@@ -11,12 +11,218 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Fetch full history for baseline comparison
+        fetch-depth: 0
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y linux-tools-common linux-tools-generic linux-tools-$(uname -r) bc jq
+        cargo install flamegraph --locked
+    
+    - name: Download baseline from main branch
+      if: github.event_name == 'pull_request'
+      run: |
+        # Try to download baseline from main branch artifacts
+        gh run list --branch main --workflow ci.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId' > run_id.txt || true
+        if [ -s run_id.txt ]; then
+          RUN_ID=$(cat run_id.txt)
+          echo "Downloading baseline from run $RUN_ID"
+          gh run download $RUN_ID -n benchmark-baseline -D ./target/criterion-baseline || true
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+    
+    - name: Cache benchmark baselines
+      uses: actions/cache@v4
+      with:
+        path: ./target/criterion
+        key: ${{ runner.os }}-benchmark-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-benchmark-
+    
+    - name: Run benchmarks
+      run: |
+        # Enable perf counters
+        echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+        
+        # Run benchmarks with JSON output for regression detection
+        cargo bench --bench ring_buffer_benches -- --save-baseline current
+    
+    - name: Generate flamegraphs
+      run: |
+        # Build benchmarks in release mode
+        cargo build --release --bench ring_buffer_benches
+        
+        # Generate flamegraphs for each benchmark group
+        echo "Generating flamegraph for throughput benchmark..."
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-throughput.svg -- --bench throughput_benchmark --profile-time 10
+        
+        echo "Generating flamegraph for latency benchmark..."
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-latency.svg -- --bench latency_benchmark --profile-time 10
+        
+        echo "Generating flamegraph for boundary benchmark..."
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-boundary.svg -- --bench boundary_benchmark --profile-time 10
+        
+        echo "Generating flamegraph for contention benchmark..."
+        sudo -E env "PATH=$PATH" cargo flamegraph --bench ring_buffer_benches -o flamegraph-contention.svg -- --bench contention_benchmark --profile-time 10
+    
+    - name: Collect hardware performance counters
+      run: |
+        # Make sure scripts are executable
+        chmod +x ./scripts/perf-counters.sh || true
+        
+        # Run perf counter collection
+        if [ -f "./scripts/perf-counters.sh" ]; then
+          ./scripts/perf-counters.sh || echo "Perf counter collection completed with warnings"
+        else
+          # Inline perf counter collection
+          OUTPUT_DIR="./target/perf-results"
+          mkdir -p "$OUTPUT_DIR"
+          EVENTS="cpu-cycles,instructions,cache-references,cache-misses,branch-instructions,branch-misses"
+          
+          sudo -E env "PATH=$PATH" perf stat -e "$EVENTS" -o "$OUTPUT_DIR/benchmark-perf.txt" \
+            cargo bench --bench ring_buffer_benches || true
+            
+          echo "=== Performance Counters ==="
+          cat "$OUTPUT_DIR/benchmark-perf.txt" || true
+        fi
+    
+    - name: Check for performance regressions
+      if: github.event_name == 'pull_request'
+      run: |
+        # Check if we have baseline data to compare against
+        if [ -d "./target/criterion-baseline" ]; then
+          # Copy baseline data for comparison
+          cp -r ./target/criterion-baseline/* ./target/criterion/ 2>/dev/null || true
+          
+          # Mark baseline
+          for dir in ./target/criterion/*/; do
+            if [ -d "$dir" ]; then
+              for bench in "$dir"*/; do
+                if [ -d "$bench/new" ]; then
+                  mv "$bench/new" "$bench/base" 2>/dev/null || true
+                fi
+              done
+            fi
+          done
+          
+          # Run benchmarks again to get 'new' data
+          cargo bench --bench ring_buffer_benches -- --save-baseline new
+        fi
+        
+        # Use regression check script if available
+        if [ -f "./scripts/check-regression.sh" ]; then
+          chmod +x ./scripts/check-regression.sh
+          ./scripts/check-regression.sh
+        else
+          # Simple regression check
+          echo "Checking for performance regressions..."
+          
+          # Criterion will output regression information in its report
+          if cargo bench --bench ring_buffer_benches -- --baseline base 2>&1 | grep -E "Performance has regressed|slower by"; then
+            echo "❌ Performance regression detected!"
+            exit 1
+          else
+            echo "✅ No performance regressions detected"
+          fi
+        fi
+    
+    - name: Generate performance report
+      if: always()
+      run: |
+        # Create performance report
+        REPORT_FILE="performance-report.md"
+        echo "# Performance Report" > $REPORT_FILE
+        echo "" >> $REPORT_FILE
+        echo "## Benchmark Results" >> $REPORT_FILE
+        echo "" >> $REPORT_FILE
+        
+        # Add criterion HTML report link
+        echo "Detailed results available in the criterion HTML report." >> $REPORT_FILE
+        echo "" >> $REPORT_FILE
+        
+        # Add perf counter summary if available
+        if [ -d "./target/perf-results" ]; then
+          echo "## Hardware Performance Counters" >> $REPORT_FILE
+          echo "" >> $REPORT_FILE
+          for file in ./target/perf-results/*.txt; do
+            if [ -f "$file" ]; then
+              echo "### $(basename $file .txt)" >> $REPORT_FILE
+              echo '```' >> $REPORT_FILE
+              grep -E "(instructions|cache-misses|branch-misses)" "$file" | head -n 6 >> $REPORT_FILE || true
+              echo '```' >> $REPORT_FILE
+              echo "" >> $REPORT_FILE
+            fi
+          done
+        fi
+        
+        # Add baseline P99 latency information
+        echo "## Baseline P99 Latency" >> $REPORT_FILE
+        echo "" >> $REPORT_FILE
+        echo "P99 latencies are tracked in the criterion benchmark results." >> $REPORT_FILE
+        echo "View the HTML report for detailed percentile breakdowns." >> $REPORT_FILE
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results
+        path: |
+          target/criterion/**/*.json
+          target/criterion/**/*.html
+          flamegraph-*.svg
+          performance-report.md
+          target/perf-results/
+        retention-days: 30
+    
+    - name: Upload baseline for main branch
+      uses: actions/upload-artifact@v4
+      if: github.ref == 'refs/heads/main'
+      with:
+        name: benchmark-baseline
+        path: |
+          target/criterion/**/*.json
+        retention-days: 90
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = '## Benchmark Results\n\n';
+          comment += 'Flamegraphs have been generated for all benchmark groups.\n\n';
+          
+          // Add performance report if it exists
+          try {
+            const report = fs.readFileSync('performance-report.md', 'utf8');
+            comment += report;
+          } catch (e) {
+            comment += 'Performance report not available.\n';
+          }
+          
+          comment += '\n\nView the full results in the workflow artifacts.';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
