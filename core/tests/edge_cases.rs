@@ -1,4 +1,4 @@
-use ::core::ring_buffer::{RingBuffer, RingBufferError};
+use core::ring_buffer::{RingBuffer, RingBufferError};
 use std::thread;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -8,7 +8,7 @@ use std::sync::Arc;
 fn test_single_element_buffer() {
     // Smallest possible buffer
     let buffer = RingBuffer::<u32>::new(1).unwrap();
-    let (mut producer, mut consumer) = buffer.split();
+    let (mut producer, consumer) = buffer.split();
     
     // Should be empty initially
     assert!(consumer.is_empty());
@@ -48,8 +48,8 @@ fn test_large_buffer() {
         producer.push(i).unwrap();
     }
     
-    assert_eq!(consumer.len(), half);
-    assert_eq!(producer.remaining_capacity(), (1 << 20) - 1 - half);
+    assert_eq!(consumer.len(), half as usize);
+    assert_eq!(producer.remaining_capacity(), ((1 << 20) - 1 - half) as usize);
     
     // Consume all
     for i in 0..half {

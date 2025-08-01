@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+core = { path = "../core" }
+
+[dev-dependencies]
+
+[[bench]]
+name = "ring_buffer_benches"
+harness = false
